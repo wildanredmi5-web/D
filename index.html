@@ -1,0 +1,330 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Toko Online Premium + Pencarian & Pembayaran</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+/* ===== GLOBAL ===== */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  background: linear-gradient(135deg, #e0f7fa, #80deea);
+  color: #333;
+}
+header {
+  position: sticky;
+  top: 0;
+  background: #00796b;
+  color: white;
+  padding: 10px;
+  text-align: center;
+  z-index: 10;
+}
+h2, h3, h4 {
+  text-align: center;
+  margin: 5px 0;
+}
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 12px;
+  margin: 5px 0;
+  background-color: #ff6f61;
+  color: white;
+  transition: 0.3s;
+}
+button:hover {
+  background-color: #e65b50;
+}
+.section {
+  display: none;
+  padding-bottom: 60px;
+}
+.section.active {
+  display: block;
+}
+input, select {
+  padding: 8px;
+  width: 100%;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+/* ===== STICKY CART ICON ===== */
+#cartIcon {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  background: #ff6f61;
+  padding: 12px;
+  border-radius: 50%;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 100;
+}
+#cartIcon::after {
+  content: attr(data-count);
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: yellow;
+  color: black;
+  border-radius: 50%;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+/* ===== PRODUK GRID ===== */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 15px;
+  margin: 10px;
+}
+.card {
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.card img {
+  width: 100%;
+  border-radius: 10px;
+}
+.card b {
+  display: block;
+  margin: 5px 0;
+  font-size: 16px;
+}
+.animate {
+  animation: bounce 0.5s;
+}
+@keyframes bounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* ===== KERANJANG ===== */
+#cartList li {
+  background: #fff;
+  padding: 10px;
+  margin-bottom: 5px;
+  border-radius: 5px;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+</style>
+</head>
+<body>
+
+<header>
+<h2>Toko Online Full E-Commerce</h2>
+<input type="text" id="search" placeholder="Cari produk..." oninput="searchProduct()">
+</header>
+
+<!-- STICKY CART ICON -->
+<div id="cartIcon" data-count="0" onclick="showSection('keranjang')">🛒</div>
+
+<!-- PRODUK -->
+<div id="produk" class="section active">
+  <h3>Produk</h3>
+  <div class="grid" id="productGrid"></div>
+</div>
+
+<!-- KERANJANG -->
+<div id="keranjang" class="section">
+  <h3>Keranjang</h3>
+  <ul id="cartList"></ul>
+  <p id="total"></p>
+  <p id="ongkir"></p>
+  <p id="grandTotal"></p>
+
+  <h4>Alamat Pengiriman</h4>
+  <input type="text" id="nama" placeholder="Nama penerima" />
+  <input type="text" id="alamat" placeholder="Alamat lengkap" />
+  <select id="kota">
+    <option value="Jakarta">Jakarta</option>
+    <option value="Bandung">Bandung</option>
+    <option value="Surabaya">Surabaya</option>
+    <option value="Yogyakarta">Yogyakarta</option>
+  </select>
+
+  <h4>Pilih Metode Pembayaran</h4>
+  <select id="pembayaran">
+    <option value="whatsapp">WhatsApp</option>
+    <option value="transfer">Transfer Bank</option>
+    <option value="qris">QRIS</option>
+  </select>
+
+  <button onclick="checkout()">Checkout & Bayar</button>
+  <br><br>
+  <button onclick="showSection('produk')">⬅ Kembali</button>
+</div>
+
+<script>
+// DATA PRODUK
+const products = [
+  {nama: 'Kaos Polos', harga: 50000, img: 'https://i.ibb.co/YR0Fw0T/kaos.jpg'},
+  {nama: 'Kemeja Lengan Panjang', harga: 120000, img: 'https://i.ibb.co/8bGqF3F/kemeja.jpg'},
+  {nama: 'Celana Jeans', harga: 150000, img: 'https://i.ibb.co/jrkTP5x/jeans.jpg'},
+  {nama: 'Sepatu Sneakers', harga: 250000, img: 'https://i.ibb.co/TtG0JcQ/sneakers.jpg'},
+  {nama: 'Topi Baseball', harga: 70000, img: 'https://i.ibb.co/dGBsqMZ/topi.jpg'},
+  {nama: 'Tas Ransel', harga: 180000, img: 'https://i.ibb.co/ZVPc0GZ/tas.jpg'},
+  {nama: 'Jaket Hoodie', harga: 200000, img: 'https://i.ibb.co/NYFQ2H2/hoodie.jpg'}
+];
+
+let cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+// NAVIGASI
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'keranjang') tampilkanKeranjang();
+}
+
+// RENDER PRODUK
+function renderProducts(filtered = null) {
+  const grid = document.getElementById('productGrid');
+  grid.innerHTML = '';
+  const list = filtered || products;
+  list.forEach((p, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<img src="${p.img}" alt="${p.nama}">
+                      <b>${p.nama}</b>
+                      <p>Rp ${p.harga}</p>
+                      <button onclick="addToCart(${i}, this)">Tambah ke Keranjang</button>`;
+    grid.appendChild(card);
+  });
+}
+
+// TAMBAH KE KERANJANG + ANIMASI
+function addToCart(index, btn) {
+  const p = products[index];
+  cart.push(p);
+  localStorage.setItem("cart", JSON.stringify(cart));
+  updateCartIcon();
+
+  // Fly-to-cart animation
+  const img = btn.parentElement.querySelector('img');
+  const flyImg = img.cloneNode(true);
+  flyImg.style.position = 'fixed';
+  const rect = img.getBoundingClientRect();
+  flyImg.style.top = rect.top + 'px';
+  flyImg.style.left = rect.left + 'px';
+  flyImg.style.width = rect.width + 'px';
+  flyImg.style.transition = 'all 0.8s ease-in-out';
+  document.body.appendChild(flyImg);
+  const cartRect = document.getElementById('cartIcon').getBoundingClientRect();
+  setTimeout(() => {
+    flyImg.style.top = cartRect.top + 'px';
+    flyImg.style.left = cartRect.left + 'px';
+    flyImg.style.width = '20px';
+    flyImg.style.opacity = 0;
+  }, 10);
+  setTimeout(() => document.body.removeChild(flyImg), 800);
+
+  btn.classList.add('animate');
+  setTimeout(() => btn.classList.remove('animate'), 500);
+}
+
+// TAMPILKAN KERANJANG
+function tampilkanKeranjang() {
+  const list = document.getElementById("cartList");
+  const totalEl = document.getElementById("total");
+  const ongkirEl = document.getElementById("ongkir");
+  const grandEl = document.getElementById("grandTotal");
+  list.innerHTML = "";
+  let total = 0;
+
+  cart.forEach((item, index) => {
+    total += item.harga;
+    const li = document.createElement("li");
+    li.innerHTML = `${item.nama} - Rp ${item.harga} <button onclick="hapusItem(${index})" style="background:red">Hapus</button>`;
+    list.appendChild(li);
+  });
+
+  // Ongkir dinamis
+  const kota = document.getElementById('kota').value;
+  let ongkir = 0;
+  if(kota === 'Jakarta') ongkir = 15000;
+  else if(kota === 'Bandung') ongkir = 20000;
+  else if(kota === 'Surabaya') ongkir = 25000;
+  else ongkir = 18000;
+
+  const grandTotal = total + ongkir;
+  totalEl.textContent = "Subtotal: Rp " + total;
+  ongkirEl.textContent = "Ongkir: Rp " + ongkir;
+  grandEl.textContent = "Total Bayar: Rp " + grandTotal;
+}
+
+// HAPUS ITEM
+function hapusItem(index) {
+  cart.splice(index, 1);
+  localStorage.setItem("cart", JSON.stringify(cart));
+  updateCartIcon();
+  tampilkanKeranjang();
+}
+
+function updateCartIcon() {
+  document.getElementById('cartIcon').setAttribute('data-count', cart.length);
+}
+
+// PENCARIAN PRODUK
+function searchProduct() {
+  const query = document.getElementById('search').value.toLowerCase();
+  const filtered = products.filter(p => p.nama.toLowerCase().includes(query));
+  renderProducts(filtered);
+}
+
+// CHECKOUT + PEMBAYARAN
+function checkout() {
+  const nama = document.getElementById('nama').value;
+  const alamat = document.getElementById('alamat').value;
+  const kota = document.getElementById('kota').value;
+  const metode = document.getElementById('pembayaran').value;
+
+  if(!nama || !alamat) { alert("Isi nama & alamat"); return; }
+
+  // Hitung total + ongkir
+  let total = 0;
+  cart.forEach(item => total += item.harga);
+  let ongkir = 0;
+  if(kota === 'Jakarta') ongkir = 15000;
+  else if(kota === 'Bandung') ongkir = 20000;
+  else if(kota === 'Surabaya') ongkir = 25000;
+  else ongkir = 18000;
+  const grandTotal = total + ongkir;
+
+  let pesan = `Halo, saya ingin pesan:%0A`;
+  cart.forEach(item => pesan += `- ${item.nama} Rp${item.harga}%0A`);
+  pesan += `%0ATotal: Rp ${grandTotal}%0AAlamat:%0A${nama}%0A${alamat}, ${kota}`;
+  pesan += `%0AMetode pembayaran: ${metode}`;
+
+  if(metode === 'whatsapp'){
+    window.location.href = "https://wa.me/628XXXXXXXXXX?text=" + pesan;
+  } else if(metode === 'transfer'){
+    alert("Silahkan transfer ke rekening: 123-456-789 Bank ABC\n" + pesan.replace(/%0A/g,"\n"));
+  } else if(metode === 'qris'){
+    alert("Silahkan scan QRIS ini untuk pembayaran.\n" + pesan.replace(/%0A/g,"\n"));
+  }
+}
+
+// INIT
+renderProducts();
+updateCartIcon();
+</script>
+</body>
+</html>
